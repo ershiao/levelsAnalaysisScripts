@@ -24,11 +24,12 @@ def getSalaryDataDump():
     else:
         # Cache previous dump file
         if (os.path.exists(levelsSalariesFilePath)
-            and time.time() - os.path.getmtime(levelsSalariesFilePath) >= fileCacheUpdatePeriod):
+                and time.time() - os.path.getmtime(levelsSalariesFilePath) >= fileCacheUpdatePeriod):
             dateString = datetime.datetime.today().strftime('%Y-%m-%d')
-            if (not os.path.exists(previousLevelsSalariesDir)) :
+            if (not os.path.exists(previousLevelsSalariesDir)):
                 os.mkdir(previousLevelsSalariesDir)
-            shutil.move(levelsSalariesFilePath, f'{previousLevelsSalariesDir}/{dateString}.json')
+            shutil.move(levelsSalariesFilePath,
+                        f'{previousLevelsSalariesDir}/{dateString}.json')
 
         print('Salaries file not present or out of date. Fetching from `levels.fyi`.')
         salaries = requests.get(
@@ -85,22 +86,12 @@ def filterSalaryDF(df: DataFrame, title: str, state: str, maxYearsOfExperience: 
 
 # TODO: Generalize the bounds
 # TODO: Display counts + std. dev
-def getPositionsWithSalaryRange(df: DataFrame, min: int):
-    prunedSalaries = (df[df['totalyearlycompensation']
-      .between(df['totalyearlycompensation'].quantile(.05),df['totalyearlycompensation'].quantile(.95))]
-      )
-    positionAvgSalariesDf = df.groupby(['company', 'level']).mean()
-
-    print('275-350')
-    print(positionAvgSalariesDf[(positionAvgSalariesDf['totalyearlycompensation']
-          >= 275) & (positionAvgSalariesDf['totalyearlycompensation'] <= 350)])
-    print('350-400')
-    print(positionAvgSalariesDf[(positionAvgSalariesDf['totalyearlycompensation']
-          >= 350) & (positionAvgSalariesDf['totalyearlycompensation'] <= 400)])
-    print('400+')
-    print(positionAvgSalariesDf[(positionAvgSalariesDf['totalyearlycompensation']
-          >= 400)])
-
+def getPositionsWithSalaryRange(df: DataFrame, min: int, max: int):
+    prunedSalaries = (df[
+        df['totalyearlycompensation']
+        .between(df['totalyearlycompensation'].quantile(.05), df['totalyearlycompensation'].quantile(.95))
+    ])
+    positionAvgSalariesDf = prunedSalaries.groupby(['company', 'level']).mean()
     return positionAvgSalariesDf[positionAvgSalariesDf['totalyearlycompensation'] > min]
 
 
@@ -115,9 +106,13 @@ def getTargetTitle(df: DataFrame):
 def getTargetState(df: DataFrame):
     # TODO: Group by state or country instead of just location
     # TODO: Input validity check
-    locations = df.groupby('location').size()
+    countryState = df['location'].str.extract(
+        r'(?<=, )(\w\w)(?=,)?',
+        expand=False
+    )
+    locations = df.groupby(countryState).size()
     print(locations)
-    targetState = input('Enter state abbrevation: ').strip()
+    targetState = input('Enter country/state abbrevation: ').strip()
     return targetState
 
 
@@ -140,11 +135,12 @@ def main():
     targetTitle = getTargetTitle(salariesDF)
     targetState = getTargetState(salariesDF)
     yearsOfExperience = getYearsOfExperience()
-    minSal = int(input('Enter target min salary: ;').strip())
+    minSal = int(input('Enter target min salary (in thousands): ').strip())
 
     targettedSalariesDf = filterSalaryDF(
         salariesDF, targetTitle, targetState, yearsOfExperience)
-    minSalariesDf = getPositionsWithSalaryRange(targettedSalariesDf, 275)
+    minSalariesDf = getPositionsWithSalaryRange(
+        targettedSalariesDf, minSal)
 
     print('Exporting results to `eligiblePositions.csv`')
     exportDf(minSalariesDf)
