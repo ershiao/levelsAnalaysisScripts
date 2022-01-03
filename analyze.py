@@ -38,11 +38,13 @@ def getSalaryDataDump():
         json.dump(salaries, newSalariesFile)
     return salaries
 
+# TODO: Cache data fixing results, runtime mostly spent on this right now.
+
 
 def fixSalaryDF(df: DataFrame):
     # Filter out salary data older than a year
     df['timestamp'] = pd.to_datetime(df['timestamp'])
-    lookbackDatetime = datetime.datetime.now() - datetime.timedelta(days=365)
+    lookbackDatetime = datetime.datetime.now() - datetime.timedelta(days=365 * 2)
     fixedSalaryDf = df[df['timestamp']
                        > lookbackDatetime]
 
@@ -70,7 +72,7 @@ def fixSalaryDF(df: DataFrame):
     fixedSalaryDf[numericFields] = fixedSalaryDf[numericFields].apply(
         pd.to_numeric)
 
-    return fixedSalaryDf
+    return fixedSalaryDf.reset_index()
 
 
 def filterSalaryDF(df: DataFrame, title: str, state: str, maxYearsOfExperience: int):
@@ -86,13 +88,30 @@ def filterSalaryDF(df: DataFrame, title: str, state: str, maxYearsOfExperience: 
 
 # TODO: Generalize the bounds
 # TODO: Display counts + std. dev
-def getPositionsWithSalaryRange(df: DataFrame, min: int, max: int):
+def getPositionsWithSalaryRange(df: DataFrame, min: int):
     prunedSalaries = (df[
         df['totalyearlycompensation']
         .between(df['totalyearlycompensation'].quantile(.05), df['totalyearlycompensation'].quantile(.95))
     ])
-    positionAvgSalariesDf = prunedSalaries.groupby(['company', 'level']).mean()
-    return positionAvgSalariesDf[positionAvgSalariesDf['totalyearlycompensation'] > min]
+    counts = prunedSalaries.groupby(
+        ['company', 'level']).size().to_frame('count')
+
+    positionAvgSalariesDf = (prunedSalaries.groupby(['company', 'level']).agg(
+        tcMean=(
+            'totalyearlycompensation', 'mean'),
+        tcStd=(
+            'totalyearlycompensation', 'std'),
+        yoeMean=(
+            'yearsofexperience', 'mean'),
+        yoeStd=(
+            'yearsofexperience', 'std'),
+        yearsatcompany=('yearsatcompany', 'mean')
+    )
+    )
+
+    positionAvgSalariesDf = pd.merge(
+        positionAvgSalariesDf, counts, on=['company', 'level'])
+    return positionAvgSalariesDf[positionAvgSalariesDf['tcMean'] > min]
 
 
 def getTargetTitle(df: DataFrame):
@@ -121,8 +140,10 @@ def getYearsOfExperience():
     return int(input('Enter years of experience: ').strip())
 
 
-def exportDf(df: DataFrame):
-    eligiblePositionsFilePath = 'eligiblePositions.csv'
+def exportDf(df: DataFrame, title: str, countryState: str, yoe: int, minSalary: int):
+    dateString = datetime.datetime.today().strftime('%Y-%m-%d')
+    eligiblePositionsFilePath = f'eligiblePositions/{title}_{countryState}_{yoe}yoe_{minSalary}salary_{dateString}.csv'
+    print(f'Exporting results to `{eligiblePositionsFilePath}`')
     df.to_csv(eligiblePositionsFilePath)
 
 
@@ -135,15 +156,14 @@ def main():
     targetTitle = getTargetTitle(salariesDF)
     targetState = getTargetState(salariesDF)
     yearsOfExperience = getYearsOfExperience()
-    minSal = int(input('Enter target min salary (in thousands): ').strip())
+    minSalary = int(input('Enter target min salary (in thousands): ').strip())
 
     targettedSalariesDf = filterSalaryDF(
         salariesDF, targetTitle, targetState, yearsOfExperience)
     minSalariesDf = getPositionsWithSalaryRange(
-        targettedSalariesDf, minSal)
-
-    print('Exporting results to `eligiblePositions.csv`')
-    exportDf(minSalariesDf)
+        targettedSalariesDf, minSalary)
+    exportDf(minSalariesDf, targetTitle, targetState,
+             yearsOfExperience, minSalary)
 
 
 main()
