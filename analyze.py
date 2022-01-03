@@ -22,6 +22,7 @@ def getSalaryDataDump():
         salaries = json.load(salariesFile)
         salariesFile.close()
     else:
+        # Cache previous dump file
         if (os.path.exists(levelsSalariesFilePath)
             and time.time() - os.path.getmtime(levelsSalariesFilePath) >= fileCacheUpdatePeriod):
             dateString = datetime.datetime.today().strftime('%Y-%m-%d')
