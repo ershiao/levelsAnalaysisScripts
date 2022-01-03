@@ -6,23 +6,30 @@ import os
 import json
 import time
 import datetime
+import shutil
 
+previousLevelsSalariesDir = 'previousLevelsSalaries'
 levelsSalariesFilePath = 'levelsSalaries.json'
-# 1 month in ms
-fileCacheUpdatePeriod = 30 * 24 * 60 * 60 * 1000
+# 1 month in seconds
+fileCacheUpdatePeriod = 30 * 24 * 60 * 60
 
 
 def getSalaryDataDump():
-    # TODO: cache json dump into FS
     if (os.path.exists(levelsSalariesFilePath)
-            and os.path.getsize(levelsSalariesFilePath) > 0
             and time.time() - os.path.getmtime(levelsSalariesFilePath) < fileCacheUpdatePeriod):
         print('Reading salaries from file')
         salariesFile = open(levelsSalariesFilePath)
         salaries = json.load(salariesFile)
         salariesFile.close()
     else:
-        print('Salaries file not present or up to date. Fetching from `levels.fyi`.')
+        if (os.path.exists(levelsSalariesFilePath)
+            and time.time() - os.path.getmtime(levelsSalariesFilePath) >= fileCacheUpdatePeriod):
+            dateString = datetime.datetime.today().strftime('%Y-%m-%d')
+            if (not os.path.exists(previousLevelsSalariesDir)) :
+                os.mkdir(previousLevelsSalariesDir)
+            shutil.move(levelsSalariesFilePath, f'{previousLevelsSalariesDir}/{dateString}.json')
+
+        print('Salaries file not present or out of date. Fetching from `levels.fyi`.')
         salaries = requests.get(
             'https://www.levels.fyi/js/salaryData.json').json()
         newSalariesFile = open(levelsSalariesFilePath, 'w')
