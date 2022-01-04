@@ -131,8 +131,8 @@ def getTargetTitle(df: DataFrame):
 
 
 def getTargetState(df: DataFrame):
-    # TODO: Group by state or country instead of just location
-    # TODO: Input validity check
+    # TODO: Find better mechanism for pulling states and countries.
+    # May be better to just search against a fixed list of abbr. as opposed to regexing.
     countryState = df['location'].str.extract(
         r'(?<=, )(\w\w)(?=,)?',
         expand=False
@@ -161,6 +161,7 @@ def main():
     print('Fixing salary dataframe')
     salariesDF = fixSalaryDF(salariesDF)
 
+    # TODO: Input validity check
     targetTitle = getTargetTitle(salariesDF)
     targetState = getTargetState(salariesDF)
     yearsOfExperience = getYearsOfExperience()
