@@ -4,6 +4,8 @@
 # the parameters as part of the file name. The intended use for the CSV is to put into
 # some excel-like software for easy reading and basic manipulation.
 
+# In order to run, run `python analyze.py` from the directory and fill out the prompted inputs
+
 # * The script attempts to locally cache the JSON dump into the same folder
 # with an update period of 30 days
 import pandas as pd
