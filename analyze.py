@@ -1,3 +1,11 @@
+# analyze.py is a script meant to be run in CLI that pulls down* the JSON dump
+# from levels.fyi and then accepts title, stateCountry abbr., minimum salary, and
+# years of experience as parameters. The results then get exported to a csv using
+# the parameters as part of the file name. The intended use for the CSV is to put into
+# some excel-like software for easy reading and basic manipulation.
+
+# * The script attempts to locally cache the JSON dump into the same folder
+# with an update period of 30 days
 import pandas as pd
 from pandas.core.frame import DataFrame
 import requests
@@ -10,7 +18,7 @@ import shutil
 
 previousLevelsSalariesDir = 'previousLevelsSalaries'
 levelsSalariesFilePath = 'levelsSalaries.json'
-# 1 month in seconds
+# 30 days in seconds
 fileCacheUpdatePeriod = 30 * 24 * 60 * 60
 
 
